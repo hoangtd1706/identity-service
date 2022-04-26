@@ -22,9 +22,10 @@ public class IdentityDbContext : DbContext
             .HasData(
             new User
             {
-                Fullname = "Quản trị viên",
+                EmployeeId = "000",
+                DisplayName = "Quản trị viên",
                 Username = "admin",
-                Email = "it@ecoba.com.vn",
+                Mail = "it@ecoba.com.vn",
                 PasswordHash = passwordHash,
                 PasswordSatl = passwordSalt,
                 Editable = false,

@@ -1,8 +1,6 @@
-﻿using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
-using ServiceDiscovery.Consul;
-using Consul;
+using System.Security.Claims;
 
 using Ecoba.IdentityService.Model;
 using Ecoba.IdentityService.Services.AuthenticationService;
@@ -12,75 +10,48 @@ namespace Ecoba.IdentityService.Controllers;
 [ApiController]
 public class AuthController : ControllerBase
 {
-    private IConsulClient _consulClient;
-    private IConsulHttpClient _consulHttpClient;
     private readonly IAuthenticationService _authenticationService;
-    public static User user = new User();
+    private readonly IdentityDbContext _context;
 
-    public AuthController(IAuthenticationService authenticationService, IConsulClient consulClient, IConsulHttpClient consulHttpClient)
+    public AuthController(IAuthenticationService authenticationService, IdentityDbContext context)
     {
         _authenticationService = authenticationService;
-        _consulClient = consulClient;
-        _consulHttpClient = consulHttpClient;
+        _context = context;
     }
 
-    [HttpGet]
-    public string Index()
+    // [HttpPost("login")]
+    // public IActionResult Login(UserLogin request)
+    // {
+    //     var token = _authenticationService.Authenticate(request);
+    //     if (token.Token != null) return Ok(token);
+    //     return BadRequest("Tài khoản hoặc mật khẩu không chính xác!");
+    // }
+
+    // [HttpPost("resetpassword")]
+    // [Authorize]
+    // public IActionResult ResetPassword(ResetPassword request)
+    // {
+    //     var user = getUserInToken();
+    //     if (user == null) return BadRequest();
+    //     if (_authenticationService.VerifyPasswordHash(request.OldPassword, user.PasswordHash, user.PasswordSatl))
+    //     {
+    //         if (request.OldPassword == request.NewPassword) return BadRequest("Mật khẩu mới không được trùng với mật khẩu cũ");
+    //         if (request.NewPassword != request.ReNewPassword) return BadRequest("Mật khẩu mới không giống với mật mật khẩu xác nhận");
+    //         var resetPassword = _authenticationService.ResetPassword(new UserLogin() { Username = user.Username, Password = request.NewPassword });
+    //         if (resetPassword.Token != null) return Ok(resetPassword);
+    //         return BadRequest();
+    //     }
+
+    //     return BadRequest("Mật khẩu không chính xác");
+    // }
+
+    private User getUserInToken()
     {
-
-        return "This is Identity";
+        var username = this.User.Claims.First(x => x.Type == ClaimTypes.NameIdentifier).Value;
+        var exits = _context.User.FirstOrDefault(x => x.Username == username && x.IsActive == true);
+        var result = new User();
+        if (exits == null) return result;
+        return exits;
     }
 
-
-    [HttpGet("admin")]
-    [Authorize(Roles = "Admin")]
-    public string RoleAdmin()
-    {
-
-        return "Check Role Admin";
-    }
-
-    [HttpGet("servicetest")]
-    [Authorize(Roles = "service")]
-    public string RoleService()
-    {
-
-        return "Check Role Service";
-    }
-
-    [HttpGet("member")]
-    [Authorize(Roles = "Member")]
-    public string RoleMember()
-    {
-        return "Check Role Member";
-    }
-
-    [HttpPost("login")]
-    public IActionResult Login(UserLogin request)
-    {
-        var token = _authenticationService.Authenticate(request);
-        if (token != null) return Ok(token);
-        return BadRequest();
-    }
-
-    [HttpGet("service")]
-    public async Task<IActionResult> Service()
-    {
-        var service = await _consulHttpClient.GetAsync<string>("product-service", "/api/v1/product");
-        return Ok(service.Content.ReadAsStringAsync());
-    }
-
-    [HttpGet("all")]
-    public async Task<IActionResult> AllService()
-    {
-        var allService = await _consulClient.Agent.Services();
-        return Ok(allService);
-    }
-
-    [HttpGet("catalog")]
-    public async Task<IActionResult> Catalog()
-    {
-        var catalog = await _consulClient.Catalog.Service("product-service");
-        return Ok(catalog);
-    }
 }
